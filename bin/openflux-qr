@@ -1,0 +1,2 @@
+#!/bin/bash
+exec /opt/openflux-web-ui/venv/bin/python3 /opt/openflux-web-ui/cli/show_qr.py "$@"

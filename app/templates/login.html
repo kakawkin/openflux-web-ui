@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Вход &bull; OpenFlux Web UI{% endblock %}
+
+{% block content %}
+<div class="min-h-[65vh] flex items-center justify-center">
+    <div class="w-full max-w-md bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-xl shadow-slate-200/50 dark:shadow-2xl dark:shadow-black/50 backdrop-blur transition-colors duration-200">
+        <div class="text-center mb-8">
+            <div class="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-tr from-sky-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/20">
+                <i data-lucide="lock" class="w-7 h-7 text-white"></i>
+            </div>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Вход в систему</h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Панель управления туннелями OpenFlux</p>
+        </div>
+
+        {% if error %}
+        <div class="mb-6 p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/80 border border-rose-200 dark:border-rose-700/60 text-rose-800 dark:text-rose-200 text-sm flex items-center gap-2.5">
+            <i data-lucide="alert-circle" class="w-4 h-4 flex-shrink-0 text-rose-500 dark:text-rose-400"></i>
+            <span>{{ error }}</span>
+        </div>
+        {% endif %}
+
+        <form action="{{ base_path }}/login" method="POST" class="space-y-4" onsubmit="handleLoginSubmit(event)">
+            <div>
+                <label for="username" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">Логин / Имя профиля</label>
+                <div class="relative">
+                    <input type="text" id="username" name="username" autofocus
+                           placeholder="admin или имя профиля (например, damir)"
+                           class="w-full bg-slate-50 dark:bg-slate-950/80 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition font-mono text-sm focus:bg-white dark:focus:bg-slate-950">
+                </div>
+                <p class="text-[11px] text-slate-500 mt-1">Для пользователя укажите название вашего профиля</p>
+            </div>
+
+            <div>
+                <label for="password" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">Пароль</label>
+                <div class="relative">
+                    <input type="password" id="password" name="password"
+                           placeholder="Пароль администратора или профиля"
+                           class="w-full bg-slate-50 dark:bg-slate-950/80 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition font-mono text-sm focus:bg-white dark:focus:bg-slate-950">
+                </div>
+                <p class="text-[11px] text-slate-500 mt-1">По умолчанию совпадает с именем профиля (если не был изменён)</p>
+            </div>
+
+            <div class="p-3 bg-sky-50/70 dark:bg-slate-950/50 border border-sky-100 dark:border-slate-800/80 rounded-xl text-xs text-sky-800 dark:text-slate-400 flex items-start gap-2">
+                <i data-lucide="info" class="w-4 h-4 text-sky-500 dark:text-sky-400 flex-shrink-0 mt-0.5"></i>
+                <span><strong>Подсказка:</strong> Для пользователей пароль по умолчанию равен имени профиля, но его можно изменить в личном кабинете.</span>
+            </div>
+
+            <button type="submit"
+                    class="w-full mt-2 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium py-3 rounded-xl shadow-lg shadow-sky-500/25 transition duration-200 flex items-center justify-center gap-2">
+                <span>Войти</span>
+                <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+function handleLoginSubmit(e) {
+    const userField = document.getElementById('username');
+    const passField = document.getElementById('password');
+    const userVal = userField.value.trim();
+    const passVal = passField.value.trim();
+
+    // If username is provided but password is left blank, auto-fill password with username for convenient user login
+    if (userVal && !passVal && userVal.toLowerCase() !== 'admin') {
+        passField.value = userVal;
+    }
+}
+</script>
+{% endblock %}

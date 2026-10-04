@@ -1,0 +1,886 @@
+{% extends "base.html" %}
+
+{% block title %}Дашборд пользователей &bull; OpenFlux{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Top Action & Stats Bar -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2.5">
+                <span>Панель управления туннелями</span>
+            </h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Управление изолированными инстансами OpenFlux для каждого пользователя</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <button onclick="openSettingsModal()"
+                    class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-semibold px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 transition duration-200 flex items-center gap-2">
+                <i data-lucide="settings" class="w-4 h-4 text-slate-500"></i>
+                <span>Настройки</span>
+            </button>
+            <button onclick="openAddUserModal()"
+                    class="bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-sky-500/25 transition duration-200 flex items-center gap-2">
+                <i data-lucide="user-plus" class="w-4 h-4"></i>
+                <span>Добавить пользователя</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-5 flex items-center gap-4 shadow-sm shadow-slate-200/50 dark:shadow-none transition-colors duration-200">
+            <div class="w-12 h-12 rounded-xl bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/20 text-sky-600 dark:text-sky-400 flex items-center justify-center">
+                <i data-lucide="users" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 font-medium">Всего пользователей</div>
+                <div class="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">{{ users|length }}</div>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-5 flex items-center gap-4 shadow-sm shadow-slate-200/50 dark:shadow-none transition-colors duration-200">
+            <div class="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                <i data-lucide="activity" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 font-medium">Активных служб</div>
+                <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                    {{ users | selectattr("status", "equalto", "active") | list | length }}
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-5 flex items-center gap-4 shadow-sm shadow-slate-200/50 dark:shadow-none transition-colors duration-200">
+            <div class="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                <i data-lucide="arrow-down-up" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 font-medium">Общий трафик</div>
+                <div class="text-xl font-bold text-slate-800 dark:text-slate-200 mt-0.5 font-mono" id="total-traffic-stat">
+                    {{ total_traffic_str }}
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-5 flex items-center gap-4 shadow-sm shadow-slate-200/50 dark:shadow-none transition-colors duration-200">
+            <div class="w-12 h-12 rounded-xl bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20 text-violet-600 dark:text-violet-400 flex items-center justify-center">
+                <i data-lucide="cpu" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 font-medium">Память VPS</div>
+                <div class="text-xl font-bold text-slate-800 dark:text-slate-200 mt-0.5 font-mono">
+                    {{ ram_used_str }} / {{ ram_total_str }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Users Table Card -->
+    <div class="bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl shadow-slate-200/40 dark:shadow-none overflow-hidden backdrop-blur transition-colors duration-200">
+        <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <h2 class="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                <i data-lucide="shield" class="w-4 h-4 text-sky-500 dark:text-sky-400"></i>
+                <span>Список туннелей</span>
+            </h2>
+            <span class="text-xs text-slate-400 dark:text-slate-500 font-mono">Автообновление статусов каждые 10с</span>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-slate-50 dark:bg-slate-950/60 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-800">
+                    <tr>
+                        <th class="px-6 py-3.5">Пользователь</th>
+                        <th class="px-6 py-3.5">Режим работы</th>
+                        <th class="px-6 py-3.5">Транспорт</th>
+                        <th class="px-6 py-3.5">Служба / Канал</th>
+                        <th class="px-6 py-3.5">Трафик</th>
+                        <th class="px-6 py-3.5 text-right">Управление</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-800/60" id="users-table-body">
+                    {% for u in users %}
+                    <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition group" id="user-row-{{ u.id }}">
+                        <!-- Username -->
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-bold font-mono text-sky-600 dark:text-sky-400 border border-slate-200 dark:border-slate-700">
+                                    {{ u.username[0]|upper }}
+                                </div>
+                                <div>
+                                    <div class="font-medium text-slate-900 dark:text-white font-mono flex items-center gap-1.5">
+                                        <span>{{ u.username }}</span>
+                                        {% if u.password_hash %}
+                                        <span title="Установлен свой пароль" class="text-emerald-500 inline-flex items-center">
+                                            <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+                                        </span>
+                                        {% else %}
+                                        <span title="Пароль по умолчанию (имя пользователя)" class="text-slate-400 dark:text-slate-500 inline-flex items-center">
+                                            <i data-lucide="key" class="w-3 h-3"></i>
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-xs text-slate-400 dark:text-slate-500 mt-0.5 truncate max-w-xs" title="{{ u.doc_url }}">
+                                        {{ u.doc_url }}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Mode -->
+                        <td class="px-6 py-4">
+                            {% if u.mode == "session" %}
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20">
+                                <i data-lucide="radio" class="w-3 h-3"></i>
+                                Session (:{{ u.direct_port }})
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                <i data-lucide="cloud" class="w-3 h-3"></i>
+                                Classic (Doc)
+                            </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Transport -->
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-0.5 rounded text-xs font-mono bg-slate-100 dark:bg-slate-800/80 text-sky-700 dark:text-sky-300 border border-slate-200 dark:border-slate-700">
+                                {{ u.transport_type }}
+                            </span>
+                        </td>
+
+                        <!-- Status -->
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-2">
+                                {% if u.status == "active" %}
+                                <span class="relative flex h-2.5 w-2.5">
+                                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                  <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                                </span>
+                                <span class="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Работает</span>
+                                {% elif u.status == "inactive" %}
+                                <span class="h-2.5 w-2.5 rounded-full bg-slate-400 dark:bg-slate-500"></span>
+                                <span class="text-xs text-slate-500 dark:text-slate-400">Остановлен</span>
+                                {% else %}
+                                <span class="h-2.5 w-2.5 rounded-full bg-rose-500"></span>
+                                <span class="text-xs text-rose-600 dark:text-rose-400">Ошибка</span>
+                                {% endif %}
+                            </div>
+                        </td>
+
+                        <!-- Traffic -->
+                        <td class="px-6 py-4">
+                            <div class="text-xs font-mono text-slate-700 dark:text-slate-300">
+                                <div class="flex items-center gap-1">
+                                    <i data-lucide="arrow-down" class="w-3 h-3 text-emerald-600 dark:text-emerald-400"></i>
+                                    <span>{{ u.bytes_in_str }}</span>
+                                </div>
+                                <div class="flex items-center gap-1 mt-0.5">
+                                    <i data-lucide="arrow-up" class="w-3 h-3 text-sky-600 dark:text-sky-400"></i>
+                                    <span>{{ u.bytes_out_str }}</span>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Actions -->
+                        <td class="px-6 py-4 text-right">
+                            <div class="flex items-center justify-end gap-1.5">
+                                <!-- Connect / QR -->
+                                <button onclick="openConnectModal({{ u.id }})" title="Подключение и QR-код"
+                                        class="p-2 rounded-lg bg-sky-50 dark:bg-sky-500/10 hover:bg-sky-100 dark:hover:bg-sky-500/20 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-500/20 transition">
+                                    <i data-lucide="qr-code" class="w-4 h-4"></i>
+                                </button>
+
+                                <!-- Logs -->
+                                <button onclick="openLogsModal('{{ u.username }}')" title="Логи службы"
+                                        class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition">
+                                    <i data-lucide="terminal" class="w-4 h-4"></i>
+                                </button>
+
+                                <!-- Toggle on/off -->
+                                <button onclick="toggleUser({{ u.id }})" title="Перезапустить / Переключить"
+                                        class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition">
+                                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                                </button>
+
+                                <!-- Edit -->
+                                <button onclick="openEditModal({{ u.id }})" title="Редактировать профиль"
+                                        class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition">
+                                    <i data-lucide="sliders" class="w-4 h-4"></i>
+                                </button>
+
+                                <!-- Delete -->
+                                <button onclick="deleteUser({{ u.id }}, '{{ u.username }}')" title="Удалить"
+                                        class="p-2 rounded-lg bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20 transition">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center text-slate-500">
+                            <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 text-slate-400 dark:text-slate-600"></i>
+                            Пока нет ни одного пользователя. Нажмите «Добавить пользователя» выше.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== MODALS ==================== -->
+
+<!-- 1. ADD USER MODAL -->
+<div id="add-user-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 dark:bg-black/70 backdrop-blur-sm hidden">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 transition-colors duration-200">
+        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <i data-lucide="user-plus" class="w-5 h-5 text-sky-500 dark:text-sky-400"></i>
+                Создание пользователя
+            </h3>
+            <button onclick="closeModal('add-user-modal')" class="text-slate-400 hover:text-slate-700 dark:hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <form id="add-user-form" onsubmit="submitAddUser(event)" class="space-y-4">
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Имя пользователя (латиница)</label>
+                <input type="text" id="add-username" required pattern="^[a-zA-Z0-9_-]+$" placeholder="alice"
+                       class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono text-sm focus:outline-none focus:border-sky-500 focus:bg-white dark:focus:bg-slate-950">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Пароль (необязательно)</label>
+                <input type="text" id="add-password" placeholder="По умолчанию равен имени профиля"
+                       class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono text-sm focus:outline-none focus:border-sky-500 focus:bg-white dark:focus:bg-slate-950">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Транспорт</label>
+                <select id="add-transport" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-sky-500 focus:bg-white dark:focus:bg-slate-950">
+                    <option value="yandex">Yandex Docs (WebSocket)</option>
+                    <option value="vyandex">Yandex Volga (HTTP relay + WS)</option>
+                    <option value="boards">Yandex Board (WS)</option>
+                    <option value="mailru">Mail.ru Cloud Docs (WS)</option>
+                    <option value="cupsonline">Cups.online (Centrifugo)</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">URL документа / Канала</label>
+                <input type="text" id="add-doc-url" required placeholder="https://docs.yandex.ru/docs/view?url=..."
+                       class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono text-sm focus:outline-none focus:border-sky-500 focus:bg-white dark:focus:bg-slate-950">
+                <p class="text-xs text-slate-500 mt-1">Публичная ссылка на документ или комната сервиса</p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">Режим работы ноды</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 rounded-xl p-3.5 cursor-pointer hover:border-slate-300 dark:hover:border-slate-700 flex flex-col gap-1 transition">
+                        <div class="flex items-center gap-2">
+                            <input type="radio" name="add-mode" value="classic" checked onchange="toggleDirectPortInput('add')">
+                            <span class="font-semibold text-sm text-slate-900 dark:text-white">Classic</span>
+                        </div>
+                        <span class="text-xs text-slate-500 dark:text-slate-400">Скрытный выход только через документ</span>
+                    </label>
+
+                    <label class="border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 rounded-xl p-3.5 cursor-pointer hover:border-slate-300 dark:hover:border-slate-700 flex flex-col gap-1 transition">
+                        <div class="flex items-center gap-2">
+                            <input type="radio" name="add-mode" value="session" onchange="toggleDirectPortInput('add')">
+                            <span class="font-semibold text-sm text-sky-600 dark:text-sky-400">Session</span>
+                        </div>
+                        <span class="text-xs text-slate-500 dark:text-slate-400">С прямым портом для передачи кук/капчи</span>
+                    </label>
+                </div>
+            </div>
+
+            <div id="add-direct-port-group" class="hidden">
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Direct TCP порт (выходной ноды)</label>
+                <input type="number" id="add-direct-port" value="{{ next_port }}"
+                       class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono text-sm focus:outline-none focus:border-sky-500 focus:bg-white dark:focus:bg-slate-950">
+            </div>
+
+            <div>
+                <div class="flex items-center justify-between mb-1.5">
+                    <label class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Ключ шифрования (AES-256)</label>
+                    <button type="button" onclick="generateNewKey('add-key')" class="text-xs text-sky-600 dark:text-sky-400 hover:text-sky-500 dark:hover:text-sky-300 flex items-center gap-1 font-mono">
+                        <i data-lucide="refresh-cw" class="w-3 h-3"></i> Сгенерировать
+                    </button>
+                </div>
+                <input type="text" id="add-key" required value="{{ default_key }}"
+                       class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono text-xs focus:outline-none focus:border-sky-500 focus:bg-white dark:focus:bg-slate-950">
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+                <button type="button" onclick="closeModal('add-user-modal')"
+                        class="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm">
+                    Отмена
+                </button>
+                <button type="submit"
+                        class="px-5 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-white font-semibold text-sm shadow-lg shadow-sky-500/20">
+                    Создать туннель
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 2. CONNECT & QR MODAL -->
+<div id="connect-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 dark:bg-black/70 backdrop-blur-sm hidden">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 transition-colors duration-200">
+        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <i data-lucide="qr-code" class="w-5 h-5 text-sky-500 dark:text-sky-400"></i>
+                Подключение клиента: <span id="connect-username" class="font-mono text-sky-600 dark:text-sky-400"></span>
+            </h3>
+            <button onclick="closeModal('connect-modal')" class="text-slate-400 hover:text-slate-700 dark:hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <div class="text-center space-y-4">
+            <!-- QR Image -->
+            <div class="inline-block p-4 bg-slate-50 dark:bg-white rounded-2xl shadow-md border border-slate-200 dark:border-slate-700">
+                <img id="connect-qr-img" src="" alt="OpenFlux QR Code" class="w-56 h-56 mx-auto">
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Отсканируйте камерой в приложении OpenFlux (iOS TestFlight или OpenFlux Android)</p>
+
+            <!-- Link Field -->
+            <div class="text-left space-y-1.5">
+                <label class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Ссылка openflux://</label>
+                <div class="flex items-center gap-2">
+                    <input type="text" id="connect-link-input" readonly
+                           class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 dark:text-slate-300 font-mono focus:outline-none">
+                    <button onclick="copyConnectLink()" class="px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-sky-600 dark:text-sky-400 border border-slate-200 dark:border-slate-700 font-medium text-xs flex items-center gap-1.5 whitespace-nowrap transition">
+                        <i data-lucide="copy" class="w-3.5 h-3.5"></i> Скопировать
+                    </button>
+                </div>
+            </div>
+
+            <!-- Download client.conf -->
+            <div class="pt-2 flex justify-center">
+                <a id="connect-conf-download" href="#" download="client.conf"
+                   class="inline-flex items-center gap-2 text-xs font-semibold text-indigo-700 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 bg-indigo-50 dark:bg-indigo-500/10 px-4 py-2.5 rounded-xl border border-indigo-200 dark:border-indigo-500/20 transition">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                    Скачать client.conf для OpenFlux Desktop / CLI
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 3. COOKIES & CAPTCHA MODAL -->
+<div id="cookies-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 dark:bg-black/70 backdrop-blur-sm hidden">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-5 transition-colors duration-200">
+        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <i data-lucide="cookie" class="w-5 h-5 text-amber-500 dark:text-amber-400"></i>
+                Cookies &amp; Капча для <span id="cookies-modal-user" class="font-mono text-amber-600 dark:text-amber-400"></span>
+            </h3>
+            <button onclick="closeModal('cookies-modal')" class="text-slate-400 hover:text-slate-700 dark:hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <div class="space-y-4 text-sm">
+            <p class="text-xs text-slate-500 dark:text-slate-400">
+                Если Яндекс или Mail.ru запрашивают SmartCaptcha или авторизацию, вы можете вставить экспортированные из браузера cookies (формат <strong>Netscape cookies.txt</strong> или <strong>JSON</strong>). Панель сразу применит их к работающему сервису без разрыва туннеля!
+            </p>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Вставьте cookies.txt или JSON:</label>
+                <textarea id="cookies-input" rows="8" placeholder="# Netscape HTTP Cookie File&#10;.yandex.ru&#9;TRUE&#9;/&#9;TRUE&#9;1780000000&#9;Session_id&#9;3:17..."
+                          class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl p-3.5 text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:border-amber-500 focus:bg-white dark:focus:bg-slate-950"></textarea>
+            </div>
+
+            <div class="flex items-center justify-between pt-2">
+                <span class="text-xs text-slate-500" id="cookies-status-text"></span>
+                <button onclick="saveCookies()"
+                        class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm shadow-lg shadow-amber-500/20 flex items-center gap-2">
+                    <i data-lucide="check" class="w-4 h-4"></i>
+                    Сохранить и применить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 4. LOGS MODAL -->
+<div id="logs-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 dark:bg-black/70 backdrop-blur-sm hidden">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-3xl w-full p-6 shadow-2xl space-y-4 transition-colors duration-200">
+        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+            <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2 font-mono">
+                <i data-lucide="terminal" class="w-4 h-4 text-sky-500 dark:text-sky-400"></i>
+                Логи службы: openflux@<span id="logs-modal-user"></span>
+            </h3>
+            <div class="flex items-center gap-2">
+                <button onclick="refreshLogs()" class="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                </button>
+                <button onclick="closeModal('logs-modal')" class="text-slate-400 hover:text-slate-700 dark:hover:text-white">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+
+        <pre id="logs-content" class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs font-mono text-emerald-400 h-96 overflow-y-auto whitespace-pre-wrap">Загрузка логов...</pre>
+    </div>
+</div>
+
+<!-- 5. EDIT USER MODAL -->
+<div id="edit-user-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 dark:bg-black/70 backdrop-blur-sm hidden">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5 transition-colors duration-200">
+        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <i data-lucide="sliders" class="w-5 h-5 text-sky-500 dark:text-sky-400"></i>
+                Редактирование профиля: <span id="edit-username-title" class="font-mono text-sky-600 dark:text-sky-400"></span>
+            </h3>
+            <button onclick="closeModal('edit-user-modal')" class="text-slate-400 hover:text-slate-700 dark:hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <form id="edit-user-form" onsubmit="submitEditUser(event)" class="space-y-5">
+            <input type="hidden" id="edit-user-id">
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Имя пользователя (профиль)</label>
+                <input type="text" id="edit-username-input" required pattern="^[a-zA-Z0-9_-]+$"
+                       class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono text-sm focus:outline-none focus:border-sky-500 focus:bg-white dark:focus:bg-slate-950">
+                <p class="text-[11px] text-slate-500 mt-1">При переименовании все файлы, ключи и сохранённые cookies переносятся в новый профиль, а старый профиль и сервис удаляются.</p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">Режим работы ноды</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 rounded-xl p-3.5 cursor-pointer hover:border-slate-300 dark:hover:border-slate-700 flex flex-col gap-1.5 transition">
+                        <div class="flex items-center gap-2">
+                            <input type="radio" name="edit-mode" value="classic" id="edit-mode-classic">
+                            <span class="font-semibold text-sm text-slate-900 dark:text-white">Classic</span>
+                        </div>
+                        <span class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">Только через документ (с сохраненными куками)</span>
+                    </label>
+
+                    <label class="border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 rounded-xl p-3.5 cursor-pointer hover:border-slate-300 dark:hover:border-slate-700 flex flex-col gap-1.5 transition">
+                        <div class="flex items-center gap-2">
+                            <input type="radio" name="edit-mode" value="session" id="edit-mode-session">
+                            <span class="font-semibold text-sm text-sky-600 dark:text-sky-400">Session</span>
+                        </div>
+                        <span class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">С Direct TCP каналом для получения кук/капчи</span>
+                    </label>
+                </div>
+            </div>
+
+            <div>
+                <div class="flex items-center justify-between mb-1.5">
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Пароль пользователя</label>
+                    <span id="edit-user-pwd-badge" class="text-[11px] px-2 py-0.5 rounded-full font-mono font-medium"></span>
+                </div>
+                <input type="text" id="edit-password-input" placeholder="Оставьте пустым, чтобы не менять"
+                       class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono text-sm focus:outline-none focus:border-sky-500 focus:bg-white dark:focus:bg-slate-950">
+                <div class="flex items-center justify-between mt-1.5">
+                    <p class="text-[11px] text-slate-500">Новый пароль или сброс на стандартный</p>
+                    <label class="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 cursor-pointer">
+                        <input type="checkbox" id="edit-reset-pwd-checkbox" class="rounded" onchange="toggleResetPwdCheckbox()">
+                        <span>Сбросить на имя</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+                <button type="button" onclick="closeModal('edit-user-modal')"
+                        class="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm">
+                    Отмена
+                </button>
+                <button type="submit" id="btn-edit-submit"
+                        class="px-5 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-white font-semibold text-sm shadow-lg shadow-sky-500/20 flex items-center gap-2">
+                    <i data-lucide="check" class="w-4 h-4"></i>
+                    <span>Сохранить изменения</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settings-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 dark:bg-black/70 backdrop-blur-sm hidden">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+        <button onclick="closeModal('settings-modal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-white">
+            <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+
+        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-1.5 flex items-center gap-2">
+            <i data-lucide="settings" class="w-5 h-5 text-sky-500"></i>
+            <span>Параметры сервера</span>
+        </h3>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mb-5">Глобальные настройки сервера и доступ администратора</p>
+
+        <form id="settings-form" onsubmit="handleSaveSettings(event)" class="space-y-4">
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                    Публичный IP или домен сервера
+                </label>
+                <input type="text" id="settings-server-host" required
+                       class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono text-sm focus:outline-none focus:border-sky-500 focus:bg-white dark:focus:bg-slate-950"
+                       placeholder="example.com или 1.2.3.4">
+                <p class="text-[11px] text-slate-500 mt-1">Используется для генерации ссылок openflux:// и файлов client.conf в режиме Session</p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                    Новый пароль администратора
+                </label>
+                <input type="password" id="settings-admin-pass"
+                       class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono text-sm focus:outline-none focus:border-sky-500 focus:bg-white dark:focus:bg-slate-950"
+                       placeholder="Оставьте пустым, чтобы не менять">
+                <p class="text-[11px] text-slate-500 mt-1">Оставьте поле пустым, если не хотите менять текущий пароль</p>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+                <button type="button" onclick="closeModal('settings-modal')"
+                        class="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm">
+                    Отмена
+                </button>
+                <button type="submit" id="btn-settings-submit"
+                        class="px-5 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-white font-semibold text-sm shadow-lg shadow-sky-500/20 flex items-center gap-2">
+                    <i data-lucide="check" class="w-4 h-4"></i>
+                    <span>Сохранить</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const BASE_PATH = '{{ base_path }}';
+    let activeCookiesUserId = null;
+    let activeLogsUser = null;
+
+    async function openSettingsModal() {
+        try {
+            const res = await fetch(`${BASE_PATH}/api/admin/settings`);
+            if (res.ok) {
+                const data = await res.json();
+                document.getElementById('settings-server-host').value = data.server_host || '';
+                document.getElementById('settings-admin-pass').value = '';
+                openModal('settings-modal');
+            } else {
+                alert('Не удалось загрузить текущие настройки');
+            }
+        } catch (e) {
+            alert('Ошибка связи с сервером');
+        }
+    }
+
+    async function handleSaveSettings(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btn-settings-submit');
+        btn.disabled = true;
+        btn.innerHTML = '<span>Сохранение...</span>';
+
+        const server_host = document.getElementById('settings-server-host').value.trim();
+        const admin_pass = document.getElementById('settings-admin-pass').value.trim();
+
+        const payload = {};
+        if (server_host) payload.server_host = server_host;
+        if (admin_pass) payload.admin_password = admin_pass;
+
+        try {
+            const res = await fetch(`${BASE_PATH}/api/admin/settings`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (res.ok) {
+                closeModal('settings-modal');
+                window.location.reload();
+            } else {
+                alert('Ошибка: ' + (data.detail || data.message || 'Не удалось сохранить'));
+            }
+        } catch (err) {
+            alert('Сетевая ошибка при сохранении настроек');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i><span>Сохранить</span>';
+            lucide.createIcons();
+        }
+    }
+
+    function openModal(id) {
+        document.getElementById(id).classList.remove('hidden');
+        lucide.createIcons();
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).classList.add('hidden');
+    }
+
+    function openAddUserModal() {
+        openModal('add-user-modal');
+    }
+
+    function toggleDirectPortInput(prefix) {
+        const mode = document.querySelector(`input[name="${prefix}-mode"]:checked`).value;
+        const group = document.getElementById(`${prefix}-direct-port-group`);
+        if (mode === 'session') {
+            group.classList.remove('hidden');
+        } else {
+            group.classList.add('hidden');
+        }
+    }
+
+    function generateNewKey(targetInputId) {
+        const array = new Uint8Array(16);
+        window.crypto.getRandomValues(array);
+        const hex = Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+        document.getElementById(targetInputId).value = hex;
+    }
+
+    async function submitAddUser(e) {
+        e.preventDefault();
+        const username = document.getElementById('add-username').value.trim();
+        const doc_url = document.getElementById('add-doc-url').value.trim();
+        const transport_type = document.getElementById('add-transport').value;
+        const mode = document.querySelector('input[name="add-mode"]:checked').value;
+        const direct_port = parseInt(document.getElementById('add-direct-port').value);
+        const encryption_key = document.getElementById('add-key').value.trim();
+        const password = document.getElementById('add-password').value.trim();
+
+        const payload = { username, doc_url, transport_type, mode, direct_port, encryption_key };
+        if (password) {
+            payload.password = password;
+        }
+
+        try {
+            const resp = await fetch(`${BASE_PATH}/api/users`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await resp.json();
+            if (resp.ok) {
+                showToast(`Пользователь ${username} успешно создан!`, 'success');
+                closeModal('add-user-modal');
+                setTimeout(() => location.reload(), 600);
+            } else {
+                showToast(data.detail || 'Ошибка создания', 'error');
+            }
+        } catch (err) {
+            showToast('Сетевая ошибка при создании', 'error');
+        }
+    }
+
+    async function openConnectModal(userId) {
+        try {
+            const resp = await fetch(`${BASE_PATH}/api/users/${userId}`);
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.detail);
+
+            document.getElementById('connect-username').innerText = data.username;
+            document.getElementById('connect-qr-img').src = `${BASE_PATH}/api/users/${userId}/qr`;
+            document.getElementById('connect-link-input').value = data.link;
+            document.getElementById('connect-conf-download').href = `${BASE_PATH}/api/users/${userId}/config`;
+
+            openModal('connect-modal');
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    }
+
+    function copyConnectLink() {
+        const input = document.getElementById('connect-link-input');
+        input.select();
+        navigator.clipboard.writeText(input.value);
+        showToast('Ссылка скопирована в буфер обмена!', 'success');
+    }
+
+    function openCookiesModal(userId, username, transport) {
+        activeCookiesUserId = userId;
+        document.getElementById('cookies-modal-user').innerText = `${username} (${transport})`;
+        document.getElementById('cookies-input').value = '';
+        document.getElementById('cookies-status-text').innerText = '';
+        openModal('cookies-modal');
+    }
+
+    async function saveCookies() {
+        if (!activeCookiesUserId) return;
+        const content = document.getElementById('cookies-input').value.trim();
+        if (!content) {
+            showToast('Вставьте cookies перед сохранением', 'error');
+            return;
+        }
+
+        try {
+            const resp = await fetch(`${BASE_PATH}/api/users/${activeCookiesUserId}/cookies`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content })
+            });
+            const data = await resp.json();
+            if (resp.ok) {
+                showToast('Cookies успешно сохранены и применены!', 'success');
+                closeModal('cookies-modal');
+            } else {
+                showToast(data.detail || 'Ошибка сохранения cookies', 'error');
+            }
+        } catch (err) {
+            showToast('Сетевая ошибка', 'error');
+        }
+    }
+
+    async function openLogsModal(username) {
+        activeLogsUser = username;
+        document.getElementById('logs-modal-user').innerText = username;
+        document.getElementById('logs-content').innerText = 'Загрузка логов...';
+        openModal('logs-modal');
+        refreshLogs();
+    }
+
+    async function refreshLogs() {
+        if (!activeLogsUser) return;
+        try {
+            const resp = await fetch(`${BASE_PATH}/api/users/by-name/${activeLogsUser}/logs`);
+            const data = await resp.json();
+            document.getElementById('logs-content').innerText = data.logs || 'Пусто.';
+        } catch (err) {
+            document.getElementById('logs-content').innerText = 'Ошибка загрузки логов.';
+        }
+    }
+
+    async function openEditModal(userId) {
+        try {
+            const resp = await fetch(`${BASE_PATH}/api/users/${userId}`);
+            const user = await resp.json();
+            if (!resp.ok) throw new Error(user.detail || 'Не удалось загрузить пользователя');
+
+            document.getElementById('edit-user-id').value = user.id;
+            document.getElementById('edit-username-title').innerText = user.username;
+            document.getElementById('edit-username-input').value = user.username;
+            document.getElementById('edit-password-input').value = '';
+            document.getElementById('edit-password-input').disabled = false;
+            document.getElementById('edit-password-input').placeholder = 'Оставьте пустым, чтобы не менять';
+            document.getElementById('edit-reset-pwd-checkbox').checked = false;
+
+            const pwdBadge = document.getElementById('edit-user-pwd-badge');
+            if (user.has_custom_password) {
+                pwdBadge.className = 'text-[11px] px-2 py-0.5 rounded-full font-mono font-medium bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20';
+                pwdBadge.innerText = 'Свой пароль';
+            } else {
+                pwdBadge.className = 'text-[11px] px-2 py-0.5 rounded-full font-mono font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700';
+                pwdBadge.innerText = 'По умолчанию (имя)';
+            }
+
+            if (user.mode === 'session') {
+                document.getElementById('edit-mode-session').checked = true;
+            } else {
+                document.getElementById('edit-mode-classic').checked = true;
+            }
+
+            openModal('edit-user-modal');
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    }
+
+    function toggleResetPwdCheckbox() {
+        const isReset = document.getElementById('edit-reset-pwd-checkbox').checked;
+        const passInput = document.getElementById('edit-password-input');
+        if (isReset) {
+            passInput.value = '';
+            passInput.disabled = true;
+            passInput.placeholder = 'Будет сброшен на имя профиля';
+        } else {
+            passInput.disabled = false;
+            passInput.placeholder = 'Оставьте пустым, чтобы не менять';
+        }
+    }
+
+    async function submitEditUser(e) {
+        e.preventDefault();
+        const userId = document.getElementById('edit-user-id').value;
+        const newUsername = document.getElementById('edit-username-input').value.trim();
+        const mode = document.querySelector('input[name="edit-mode"]:checked').value;
+        const isReset = document.getElementById('edit-reset-pwd-checkbox').checked;
+        const newPassword = document.getElementById('edit-password-input').value.trim();
+
+        const btn = document.getElementById('btn-edit-submit');
+        const origContent = btn ? btn.innerHTML : '';
+
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i><span>Сохранение...</span>`;
+            lucide.createIcons();
+        }
+
+        const payload = { username: newUsername, mode };
+        if (isReset) {
+            payload.reset_password = true;
+        } else if (newPassword) {
+            payload.password = newPassword;
+        }
+
+        try {
+            const resp = await fetch(`${BASE_PATH}/api/users/${userId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await resp.json();
+            if (resp.ok) {
+                showToast(`Профиль ${newUsername} успешно сохранён!`, 'success');
+                closeModal('edit-user-modal');
+                setTimeout(() => location.reload(), 600);
+            } else {
+                showToast(data.detail || 'Ошибка сохранения', 'error');
+            }
+        } catch (err) {
+            showToast('Сетевая ошибка', 'error');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = origContent;
+                lucide.createIcons();
+            }
+        }
+    }
+
+    async function toggleUser(userId) {
+        try {
+            const resp = await fetch(`${BASE_PATH}/api/users/${userId}/toggle`, { method: 'POST' });
+            const data = await resp.json();
+            if (resp.ok) {
+                showToast('Сервис перезапущен!', 'success');
+                setTimeout(() => location.reload(), 600);
+            }
+        } catch (err) {
+            showToast('Сетевая ошибка', 'error');
+        }
+    }
+
+    async function deleteUser(userId, username) {
+        if (!confirm(`Вы действительно хотите удалить пользователя ${username}? Туннель будет остановлен, а конфиги удалены.`)) {
+            return;
+        }
+
+        try {
+            const resp = await fetch(`${BASE_PATH}/api/users/${userId}`, { method: 'DELETE' });
+            if (resp.ok) {
+                showToast(`Пользователь ${username} удален`, 'success');
+                const row = document.getElementById(`user-row-${userId}`);
+                if (row) row.remove();
+            } else {
+                showToast('Ошибка удаления', 'error');
+            }
+        } catch (err) {
+            showToast('Сетевая ошибка', 'error');
+        }
+    }
+</script>
+{% endblock %}

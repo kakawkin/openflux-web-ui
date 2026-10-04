@@ -1,0 +1,14 @@
+[Unit]
+Description=OpenFlux Exit Node for user %i
+After=network.target
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=3
+LimitNOFILE=65535
+User=root
+ExecStart=/usr/local/bin/openflux --config=/etc/openflux/users/%i.conf
+
+[Install]
+WantedBy=multi-user.target

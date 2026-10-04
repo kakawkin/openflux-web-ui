@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}OpenFlux Web UI{% endblock %}</title>
+    <!-- Anti-flicker theme script -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('openflux_theme');
+            if (savedTheme === 'light' || (!savedTheme && window.matchMedia('(prefers-color-scheme: light)').matches)) {
+                document.documentElement.classList.remove('dark');
+            } else {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            400: '#38bdf8',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        code, pre, .font-mono { font-family: 'JetBrains Mono', monospace; }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .dark ::-webkit-scrollbar-thumb { background: #334155; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen flex flex-col selection:bg-sky-500 selection:text-white transition-colors duration-200">
+    <!-- Navbar -->
+    <header class="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur sticky top-0 z-40 transition-colors duration-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-sky-500/20">
+                    <i data-lucide="shield-check" class="w-5 h-5 text-white"></i>
+                </div>
+                <div>
+                    <span class="font-bold text-lg tracking-tight bg-gradient-to-r from-sky-500 to-indigo-500 dark:from-sky-400 dark:to-indigo-300 bg-clip-text text-transparent">OpenFlux</span>
+                    <span class="text-xs px-2 py-0.5 ml-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono border border-slate-200 dark:border-slate-700">v1.0</span>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2.5 sm:space-x-3.5">
+                {% if authenticated %}
+                <span class="text-xs text-slate-500 dark:text-slate-400 hidden md:inline-flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse"></span>
+                    Сервер: <strong class="text-slate-800 dark:text-slate-200 font-mono">{{ server_host }}</strong>
+                </span>
+
+                {% if current_user %}
+                    {% if current_user.role == 'admin' %}
+                    <a href="{{ base_path }}/dashboard" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400 border border-sky-200 dark:border-sky-500/20 flex items-center gap-1.5 hover:bg-sky-100 dark:hover:bg-sky-500/20 transition" title="Панель администратора">
+                        <i data-lucide="shield" class="w-3.5 h-3.5"></i>
+                        <span>Администратор</span>
+                    </a>
+                    {% else %}
+                    <a href="{{ base_path }}/my" class="px-2.5 py-1 rounded-lg text-xs font-mono font-semibold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20 flex items-center gap-1.5 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition" title="Личный кабинет профиля">
+                        <i data-lucide="user" class="w-3.5 h-3.5"></i>
+                        <span>{{ current_user.username }}</span>
+                    </a>
+                    {% endif %}
+                {% endif %}
+                {% endif %}
+
+                <!-- Theme Toggle Button -->
+                <button type="button" onclick="toggleTheme()" id="theme-toggle-btn"
+                        class="p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition flex items-center justify-center shadow-sm"
+                        title="Переключить тему (Светлая / Тёмная)">
+                    <i data-lucide="sun" class="w-4 h-4 hidden dark:block text-amber-400"></i>
+                    <i data-lucide="moon" class="w-4 h-4 block dark:hidden text-indigo-600"></i>
+                </button>
+
+                {% if authenticated %}
+                <a href="{{ base_path }}/logout" class="text-xs text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-red-400 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-rose-300 dark:hover:border-red-500/30 transition flex items-center gap-1.5">
+                    <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                    <span>Выход</span>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <!-- Content -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-200 dark:border-slate-900 py-6 text-center text-xs text-slate-500">
+        OpenFlux Web UI &bull; TCP/UDP Multi-User Pluggable Transport Gateway
+    </footer>
+
+    <!-- Global Toast Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <script>
+        lucide.createIcons();
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                localStorage.setItem('openflux_theme', 'light');
+            } else {
+                html.classList.add('dark');
+                localStorage.setItem('openflux_theme', 'dark');
+            }
+            lucide.createIcons();
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bgClass = type === 'success' ? 'bg-emerald-50 dark:bg-emerald-950 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200' :
+                            type === 'error' ? 'bg-rose-50 dark:bg-rose-950 border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200' :
+                            'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200';
+            const icon = type === 'success' ? 'check-circle' : type === 'error' ? 'alert-triangle' : 'info';
+            
+            toast.className = `pointer-events-auto border rounded-xl px-4 py-3 shadow-xl flex items-center gap-3 text-sm transition-all duration-300 transform translate-y-4 opacity-0 ${bgClass}`;
+            toast.innerHTML = `<i data-lucide="${icon}" class="w-4 h-4 flex-shrink-0"></i><span>${message}</span>`;
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-4', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
