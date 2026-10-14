@@ -49,6 +49,15 @@ def delete_user_files(username: str):
         except Exception:
             pass
 
+def clear_user_cookies(username: str):
+    """Deletes existing cookies for a user (e.g. when transport changes)."""
+    cookie_path = os.path.join(CONF_DIR, f"{username}-cookies.json")
+    if os.path.exists(cookie_path):
+        try:
+            os.remove(cookie_path)
+        except Exception:
+            pass
+
 async def rename_user(old_username: str, new_username: str) -> bool:
     """Migrates all user files, cookies, and folder from old_username to new_username, then stops/disables old service."""
     ensure_directories()

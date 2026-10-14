@@ -66,6 +66,7 @@ router = APIRouter()
 # Mount static files if directory exists
 if os.path.exists(STATIC_DIR):
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+    app.mount("/flux/static", StaticFiles(directory=STATIC_DIR), name="flux_static")
 
 # ----------------- AUTH ROUTES ----------------- #
 
@@ -302,6 +303,7 @@ async def api_my_info(request: Request):
         "username": user["username"],
         "mode": user["mode"],
         "transport_type": user["transport_type"],
+        "doc_url": user["doc_url"],
         "direct_port": user["direct_port"],
         "has_custom_password": bool(user.get("password_hash")),
         "status": svc_status,
@@ -334,6 +336,53 @@ async def api_my_mode(data: models.ModeUpdate, request: Request):
     await service_manager.restart_user_service(updated_user["username"])
 
     return {"status": "ok", "mode": new_mode}
+
+@router.post("/api/my/profile")
+async def api_my_profile(data: models.MyProfileUpdate, request: Request):
+    sess = await auth.get_current_session(request)
+    if not sess:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if sess["role"] != "user":
+        raise HTTPException(status_code=400, detail="Only for user session")
+
+    user_id = sess["user_id"]
+    user = await database.get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    updates = {}
+    cookies_cleared = False
+
+    if data.transport_type is not None:
+        new_tr = data.transport_type.strip().lower()
+        if new_tr and new_tr != user["transport_type"]:
+            service_manager.clear_user_cookies(user["username"])
+            cookies_cleared = True
+            updates["transport_type"] = new_tr
+
+    if data.doc_url is not None:
+        new_url = data.doc_url.strip()
+        if new_url and new_url != user["doc_url"]:
+            updates["doc_url"] = new_url
+
+    if updates:
+        await database.update_user(user_id, **updates)
+        updated_user = await database.get_user_by_id(user_id)
+        server_conf = config_generator.generate_server_conf(updated_user)
+        service_manager.write_user_files(updated_user, server_conf)
+        await service_manager.restart_user_service(updated_user["username"])
+
+    updated_user = await database.get_user_by_id(user_id)
+    server_host = await get_server_host(request)
+    new_link = config_generator.generate_openflux_link(updated_user, server_host)
+
+    return {
+        "status": "ok",
+        "transport_type": updated_user["transport_type"],
+        "doc_url": updated_user["doc_url"],
+        "cookies_cleared": cookies_cleared,
+        "link": new_link
+    }
 
 @router.post("/api/my/restart")
 async def api_my_restart(request: Request):
@@ -570,7 +619,10 @@ async def api_update_user(user_id: int, data: models.UserUpdate, request: Reques
         if data.doc_url is not None:
             updates["doc_url"] = data.doc_url
         if data.transport_type is not None:
-            updates["transport_type"] = data.transport_type
+            new_tr = data.transport_type.strip().lower()
+            if new_tr != user["transport_type"]:
+                service_manager.clear_user_cookies(user["username"])
+            updates["transport_type"] = new_tr
         if data.encryption_key is not None:
             updates["encryption_key"] = data.encryption_key
         if data.direct_port is not None:

@@ -13,7 +13,7 @@
             <div>
                 <div class="flex items-center gap-2.5">
                     <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white font-mono">{{ user.username }}</h1>
-                    <span class="px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-slate-100 dark:bg-slate-800 text-sky-600 dark:text-sky-300 border border-slate-200 dark:border-slate-700">
+                    <span id="badge-transport-type" class="px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-slate-100 dark:bg-slate-800 text-sky-600 dark:text-sky-300 border border-slate-200 dark:border-slate-700">
                         {{ user.transport_type | upper }}
                     </span>
                 </div>
@@ -45,6 +45,13 @@
                 <span>Ошибка службы</span>
                 {% endif %}
             </div>
+
+            <!-- Help Modal Button -->
+            <button onclick="openHelpModal()"
+                    class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-medium transition flex items-center gap-2 shadow-sm">
+                <i data-lucide="book-open" class="w-3.5 h-3.5 text-sky-500 dark:text-sky-400"></i>
+                <span>Инструкция</span>
+            </button>
 
             <!-- Quick Restart Button -->
             <button onclick="restartTunnel()" id="btn-restart"
@@ -79,6 +86,62 @@
         <!-- Left: Parameters / Mode Switcher & Stats (7 cols) -->
         <div class="lg:col-span-7 space-y-6">
             
+            <!-- Transport & Connection Card -->
+            <div class="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl shadow-slate-200/40 dark:shadow-none backdrop-blur space-y-5 transition-colors duration-200">
+                <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                    <h2 class="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                        <i data-lucide="network" class="w-4 h-4 text-sky-500 dark:text-sky-400"></i>
+                        <span>Транспорт и подключение</span>
+                    </h2>
+                    <button type="button" onclick="openHelpModal()" class="text-xs text-sky-600 dark:text-sky-400 hover:text-sky-500 flex items-center gap-1 font-medium">
+                        <i data-lucide="help-circle" class="w-3.5 h-3.5"></i>
+                        <span>Как настроить?</span>
+                    </button>
+                </div>
+
+                <form onsubmit="submitProfileChange(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                            Тип транспорта
+                        </label>
+                        <select id="my-transport" onchange="updateMyTransportHints()" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-sky-500 focus:bg-white dark:focus:bg-slate-950">
+                            <option value="yandex" {% if user.transport_type == 'yandex' %}selected{% endif %}>Yandex Docs (WebSocket)</option>
+                            <option value="telemost" {% if user.transport_type == 'telemost' %}selected{% endif %}>Yandex Telemost (WebRTC SFU, быстрый)</option>
+                            <option value="vyandex" {% if user.transport_type == 'vyandex' %}selected{% endif %}>Yandex Volga (HTTP relay + WS)</option>
+                            <option value="mailru" {% if user.transport_type == 'mailru' %}selected{% endif %}>Mail.ru Cloud Docs (WS)</option>
+                            <option value="boards" {% if user.transport_type == 'boards' %}selected{% endif %}>Yandex Board (WS)</option>
+                            <option value="avito" {% if user.transport_type == 'avito' %}selected{% endif %}>Avito Code (ShareDB)</option>
+                            <option value="cupsonline" {% if user.transport_type == 'cupsonline' %}selected{% endif %}>Cups.online (Centrifugo)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5" id="my-doc-url-label">
+                            URL документа / Канала
+                        </label>
+                        <input type="text" id="my-doc-url" required value="{{ user.doc_url }}" placeholder="https://..."
+                               class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono text-sm focus:outline-none focus:border-sky-500 focus:bg-white dark:focus:bg-slate-950">
+                        <p class="text-xs text-slate-500 mt-1" id="my-doc-url-hint">Публичная ссылка на документ Яндекса с правами редактирования</p>
+                    </div>
+
+                    <!-- Warning banner about cookie reset on transport change -->
+                    <div class="p-3 bg-amber-50/80 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-500/20 rounded-xl text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2.5">
+                        <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5"></i>
+                        <div>
+                            <strong>Внимание:</strong> при изменении типа транспорта все старые сессионные куки будут автоматически удалены, а служба туннеля перезапустится с новыми параметрами.
+                        </div>
+                    </div>
+
+                    <div class="pt-1">
+                        <button type="submit" id="btn-save-profile"
+                                class="w-full bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-semibold py-2.5 rounded-xl shadow-lg shadow-sky-500/20 transition duration-200 flex items-center justify-center gap-2 text-xs">
+                            <i data-lucide="check" class="w-4 h-4"></i>
+                            <span>Сохранить настройки транспорта</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
             <!-- Parameters Card -->
             <div class="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xl shadow-slate-200/40 dark:shadow-none backdrop-blur space-y-5 transition-colors duration-200">
                 <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
@@ -175,21 +238,6 @@
                         <div class="text-lg font-bold text-slate-900 dark:text-white font-mono mt-0.5" id="stat-bytes-out">{{ bytes_out_str }}</div>
                     </div>
                 </div>
-            </div>
-
-            <!-- Service Logs Card -->
-            <div class="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xl shadow-slate-200/40 dark:shadow-none backdrop-blur space-y-3 transition-colors duration-200">
-                <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2.5">
-                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-2">
-                        <i data-lucide="terminal" class="w-3.5 h-3.5 text-sky-500 dark:text-sky-400"></i>
-                        <span>Логи туннеля</span>
-                    </h3>
-                    <button onclick="loadLogs()" class="p-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs flex items-center gap-1 px-2.5 py-1 transition border border-slate-200 dark:border-slate-700">
-                        <i data-lucide="refresh-cw" class="w-3 h-3 text-sky-500 dark:text-sky-400"></i>
-                        <span>Обновить</span>
-                    </button>
-                </div>
-                <pre id="logs-view" class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs font-mono text-emerald-400 h-44 overflow-y-auto whitespace-pre-wrap">Загрузка логов службы...</pre>
             </div>
 
         </div>
@@ -322,6 +370,146 @@
 
         </div>
 
+</div>
+
+<!-- HELP / INSTRUCTION MODAL -->
+<div id="help-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 dark:bg-black/70 backdrop-blur-sm hidden">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-3xl w-full p-6 shadow-2xl space-y-5 transition-colors duration-200 max-h-[85vh] flex flex-col">
+        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3 flex-shrink-0">
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <i data-lucide="book-open" class="w-5 h-5 text-sky-500"></i>
+                <span>Инструкция по настройке транспортов OpenFlux</span>
+            </h3>
+            <button onclick="closeModal('help-modal')" class="text-slate-400 hover:text-slate-700 dark:hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <div class="overflow-y-auto flex-1 space-y-5 pr-2 text-sm text-slate-700 dark:text-slate-300">
+            <!-- Intro notice -->
+            <div class="p-3.5 bg-sky-50 dark:bg-sky-500/10 border border-sky-100 dark:border-sky-500/20 rounded-xl text-xs text-sky-900 dark:text-sky-300 space-y-1">
+                <div class="font-semibold flex items-center gap-1.5">
+                    <i data-lucide="info" class="w-4 h-4 text-sky-500"></i>
+                    <span>Как работает туннель OpenFlux</span>
+                </div>
+                <p>Трафик маскируется под легальные протоколы российских веб-сервисов (видеоконференции, редактирование документов, онлайн-доски). Для каждого одновременно работающего пользователя <strong>рекомендуется отдельный документ или звонок</strong>, чтобы пакеты разных клиентов не перемешивались.</p>
+            </div>
+
+            <!-- Transport 1: Telemost -->
+            <div class="border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-slate-50/50 dark:bg-slate-950/40 space-y-2.5">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs">📞</span>
+                        <span class="font-bold text-slate-900 dark:text-white">Яндекс Телемост (telemost)</span>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-semibold uppercase">Рекомендуемый</span>
+                    </div>
+                    <span class="text-xs font-mono text-emerald-600 dark:text-emerald-400">до 40+ Мбит/с</span>
+                </div>
+                <p class="text-xs text-slate-600 dark:text-slate-400">
+                    Трафик маскируется под медиапоток видеоконференции (WebRTC/SFU) с многоканальным разделением полосы (<code class="text-xs font-mono">StripedTransport</code>) и защитой от потерь пакетов.
+                </p>
+                <div class="space-y-1 text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+                    <div><strong>1. Создание:</strong> Откройте <a href="https://telemost.yandex.ru" target="_blank" class="text-sky-500 hover:underline">telemost.yandex.ru</a> (или в Яндекс Почте / приложении) и нажмите <strong>«Создать встречу»</strong>.</div>
+                    <div><strong>2. Формат ссылки:</strong> Скопируйте ссылку вида <code class="font-mono text-sky-600 dark:text-sky-400">https://telemost.yandex.ru/j/XXXXXXXXXXXXXX</code>.</div>
+                    <div><strong>3. Плюсы:</strong> Не требует файлов на Диске, работает нативно и даёт максимальную скорость скачивания.</div>
+                </div>
+            </div>
+
+            <!-- Transport 2: Yandex Docs -->
+            <div class="border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-slate-50/50 dark:bg-slate-950/40 space-y-2.5">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="w-7 h-7 rounded-lg bg-sky-100 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold text-xs">📄</span>
+                        <span class="font-bold text-slate-900 dark:text-white">Яндекс Документы (yandex / vyandex)</span>
+                    </div>
+                    <span class="text-xs font-mono text-slate-500">WebSocket / Volga</span>
+                </div>
+                <p class="text-xs text-slate-600 dark:text-slate-400">
+                    Классический протокол обхода через совместное редактирование документов на Яндекс Диске.
+                </p>
+                <div class="space-y-1 text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+                    <div><strong>1. Создание:</strong> Зайдите на <a href="https://disk.yandex.ru" target="_blank" class="text-sky-500 hover:underline">disk.yandex.ru</a> &rarr; «Создать» &rarr; «Текстовый документ» или «Таблицу».</div>
+                    <div><strong>2. Доступ:</strong> Нажмите «Поделиться ссылкой» и выберите <strong>«Редактирование всем, у кого есть ссылка»</strong>.</div>
+                    <div><strong>3. Формат ссылки:</strong> <code class="font-mono text-sky-600 dark:text-sky-400">https://docs.yandex.ru/docs/view?url=...</code> или <code class="font-mono text-sky-600 dark:text-sky-400">https://disk.yandex.ru/i/...</code>.</div>
+                    <div><strong>4. Капча:</strong> Если Яндекс показывает SmartCaptcha, переключитесь в режим Session на пару минут для прохождения капчи в браузере или вставьте Cookies в блоке ниже.</div>
+                </div>
+            </div>
+
+            <!-- Transport 3: Mail.ru -->
+            <div class="border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-slate-50/50 dark:bg-slate-950/40 space-y-2.5">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">☁️</span>
+                        <span class="font-bold text-slate-900 dark:text-white">Mail.ru Документы (mailru)</span>
+                    </div>
+                    <span class="text-xs font-mono text-slate-500">WebSocket</span>
+                </div>
+                <p class="text-xs text-slate-600 dark:text-slate-400">
+                    Обход через WebSocket офисного редактора Облака Mail.ru. Отличная альтернатива Яндексу при блокировках.
+                </p>
+                <div class="space-y-1 text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+                    <div><strong>1. Создание:</strong> Откройте <a href="https://cloud.mail.ru" target="_blank" class="text-sky-500 hover:underline">cloud.mail.ru</a>, создайте документ DOCX или XLSX.</div>
+                    <div><strong>2. Доступ:</strong> Включите публичный доступ по ссылке с правом редактирования.</div>
+                    <div><strong>3. Формат ссылки:</strong> <code class="font-mono text-sky-600 dark:text-sky-400">https://cloud.mail.ru/public/XXXX/YYYY</code> (или короткий код <code class="font-mono">XXXX/YYYY</code>).</div>
+                </div>
+            </div>
+
+            <!-- Transport 4: Avito -->
+            <div class="border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-slate-50/50 dark:bg-slate-950/40 space-y-2.5">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-xs">💻</span>
+                        <span class="font-bold text-slate-900 dark:text-white">Авито Код (avito)</span>
+                    </div>
+                    <span class="text-xs font-mono text-purple-600 dark:text-purple-400">ShareDB</span>
+                </div>
+                <p class="text-xs text-slate-600 dark:text-slate-400">
+                    Канал через платформу интерактивного кода code.avito.ru с операционным трансформированием ShareDB.
+                </p>
+                <div class="space-y-1 text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+                    <div><strong>1. Создание:</strong> Откройте <a href="https://code.avito.ru" target="_blank" class="text-sky-500 hover:underline">code.avito.ru</a> и создайте новую сессию.</div>
+                    <div><strong>2. Формат ссылки:</strong> Скопируйте ссылку на комнату вида <code class="font-mono text-sky-600 dark:text-sky-400">https://code.avito.ru/...</code>.</div>
+                </div>
+            </div>
+
+            <!-- Transport 5 & 6: Boards & Cups -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 bg-slate-50/50 dark:bg-slate-950/40 space-y-1.5">
+                    <div class="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <span>📋</span> Яндекс Доски (boards)
+                    </div>
+                    <p class="text-[11px] text-slate-500">Создайте публичную доску на <a href="https://boards.yandex.ru" target="_blank" class="text-sky-500 hover:underline">boards.yandex.ru</a> и вставьте ссылку <code class="font-mono">https://boards.yandex.ru/board/...</code>.</p>
+                </div>
+                <div class="border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 bg-slate-50/50 dark:bg-slate-950/40 space-y-1.5">
+                    <div class="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <span>🏆</span> Cups.online (cupsonline)
+                    </div>
+                    <p class="text-[11px] text-slate-500">Комнаты Centrifugo на платформе <a href="https://cups.online" target="_blank" class="text-sky-500 hover:underline">cups.online</a>. Вставьте ссылку на комнату собеседования.</p>
+                </div>
+            </div>
+
+            <!-- Modes comparison -->
+            <div class="border-t border-slate-200 dark:border-slate-800 pt-3 space-y-2">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">Разница между режимами Classic и Session</h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div class="p-3 rounded-xl bg-slate-100/70 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60">
+                        <strong class="text-slate-900 dark:text-white block mb-1">Режим Classic (Скрытный):</strong>
+                        <span>Весь трафик туннеля идет исключительно через выбранный облачный сервис. На VPS наружу не открывается ни одного открытого порта.</span>
+                    </div>
+                    <div class="p-3 rounded-xl bg-sky-50/60 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/60">
+                        <strong class="text-sky-900 dark:text-sky-300 block mb-1">Режим Session (Гибридный):</strong>
+                        <span>Помимо документа открывается прямой TCP-порт на сервере. Обеспечивает быстрый старт сессии, передачу капчи и максимальную отзывчивость.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-end flex-shrink-0">
+            <button type="button" onclick="closeModal('help-modal')"
+                    class="px-5 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-white font-semibold text-sm shadow-lg shadow-sky-500/20">
+                Понятно
+            </button>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -329,6 +517,126 @@
 {% block scripts %}
 <script>
     const BASE_PATH = '{{ base_path }}';
+
+    function openModal(id) {
+        document.getElementById(id).classList.remove('hidden');
+        lucide.createIcons();
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).classList.add('hidden');
+    }
+
+    function openHelpModal() {
+        openModal('help-modal');
+    }
+
+    const TRANSPORT_HINTS = {
+        yandex: {
+            label: 'URL документа Яндекс',
+            placeholder: 'https://docs.yandex.ru/docs/view?url=... или https://disk.yandex.ru/i/...',
+            hint: 'Публичная ссылка на документ Яндекса с правами редактирования'
+        },
+        telemost: {
+            label: 'Ссылка на встречу Яндекс Телемост',
+            placeholder: 'https://telemost.yandex.ru/j/12345678901234',
+            hint: 'Создайте видеовстречу на telemost.yandex.ru и скопируйте ссылку (WebRTC SFU)'
+        },
+        vyandex: {
+            label: 'URL документа Яндекс (Volga)',
+            placeholder: 'https://docs.yandex.ru/docs/view?url=... или https://disk.yandex.ru/i/...',
+            hint: 'Транспорт Volga. Документ на Яндекс Диске (для стабильности загрузите Cookies сессии)'
+        },
+        mailru: {
+            label: 'Ссылка на документ Mail.ru',
+            placeholder: 'https://cloud.mail.ru/public/... или AbCd/EfGhIjKlM',
+            hint: 'Публичная ссылка на редактируемый документ DOCX/XLSX в Облаке Mail.ru'
+        },
+        boards: {
+            label: 'Ссылка на Яндекс Доску',
+            placeholder: 'https://boards.yandex.ru/board/...',
+            hint: 'Ссылка на публичную доску на boards.yandex.ru'
+        },
+        avito: {
+            label: 'Ссылка на комнату code.avito.ru',
+            placeholder: 'https://code.avito.ru/...',
+            hint: 'Ссылка на сессию совместного кода платформы code.avito.ru'
+        },
+        cupsonline: {
+            label: 'Комната Cups.online',
+            placeholder: 'https://cups.online/room/...',
+            hint: 'Ссылка на комнату собеседования Cups.online'
+        }
+    };
+
+    function updateMyTransportHints() {
+        const sel = document.getElementById('my-transport');
+        if (!sel) return;
+        const info = TRANSPORT_HINTS[sel.value] || TRANSPORT_HINTS.yandex;
+        const label = document.getElementById('my-doc-url-label');
+        const input = document.getElementById('my-doc-url');
+        const hint = document.getElementById('my-doc-url-hint');
+        if (label) label.textContent = info.label;
+        if (input) input.placeholder = info.placeholder;
+        if (hint) hint.textContent = info.hint;
+    }
+
+    async function submitProfileChange(e) {
+        e.preventDefault();
+        const transport_type = document.getElementById('my-transport').value;
+        const doc_url = document.getElementById('my-doc-url').value.trim();
+
+        if (!doc_url) {
+            showToast('Укажите URL документа или встречи', 'error');
+            return;
+        }
+
+        const btn = document.getElementById('btn-save-profile');
+        const origContent = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i><span>Сохранение...</span>`;
+        lucide.createIcons();
+
+        try {
+            const resp = await fetch(`${BASE_PATH}/api/my/profile`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ transport_type, doc_url })
+            });
+            const data = await resp.json();
+            if (resp.ok) {
+                let msg = 'Настройки транспорта сохранены!';
+                if (data.cookies_cleared) {
+                    msg += ' Все старые cookies очищены, туннель перезапущен.';
+                } else {
+                    msg += ' Туннель перезапущен.';
+                }
+                showToast(msg, 'success');
+
+                const badge = document.getElementById('badge-transport-type');
+                if (badge && data.transport_type) {
+                    badge.textContent = data.transport_type.toUpperCase();
+                }
+
+                if (data.link) {
+                    document.getElementById('openflux-link').value = data.link;
+                }
+                document.getElementById('qr-image').src = `${BASE_PATH}/api/my/qr?t=${Date.now()}`;
+
+                setTimeout(() => {
+                    refreshInfo();
+                }, 1000);
+            } else {
+                showToast(data.detail || 'Ошибка сохранения настроек', 'error');
+            }
+        } catch (err) {
+            showToast('Сетевая ошибка при сохранении настроек', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = origContent;
+            lucide.createIcons();
+        }
+    }
 
     function updateModeSelection(selected) {
         const cardClassic = document.getElementById('card-mode-classic');
@@ -371,7 +679,6 @@
                 }
                 setTimeout(() => {
                     refreshInfo();
-                    loadLogs();
                 }, 1000);
             } else {
                 showToast(data.detail || 'Ошибка переключения режима', 'error');
@@ -397,7 +704,6 @@
                 showToast('Туннель успешно перезапущен!', 'success');
                 setTimeout(() => {
                     refreshInfo();
-                    loadLogs();
                 }, 1200);
             } else {
                 showToast('Ошибка при перезапуске туннеля', 'error');
@@ -424,6 +730,11 @@
                 // Update QR with cache busting
                 document.getElementById('qr-image').src = `${BASE_PATH}/api/my/qr?t=${Date.now()}`;
 
+                if (data.transport_type) {
+                    const trBadge = document.getElementById('badge-transport-type');
+                    if (trBadge) trBadge.innerText = data.transport_type.toUpperCase();
+                }
+
                 const badge = document.getElementById('status-badge');
                 if (data.status === 'active') {
                     badge.className = 'px-3.5 py-1.5 rounded-xl border flex items-center gap-2 text-xs font-semibold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20';
@@ -437,20 +748,6 @@
                 }
             }
         } catch (e) {}
-    }
-
-    async function loadLogs() {
-        try {
-            const resp = await fetch(`${BASE_PATH}/api/my/logs`);
-            if (resp.ok) {
-                const data = await resp.json();
-                const logBox = document.getElementById('logs-view');
-                logBox.innerText = data.logs || 'Логи отсутствуют.';
-                logBox.scrollTop = logBox.scrollHeight;
-            }
-        } catch (e) {
-            document.getElementById('logs-view').innerText = 'Ошибка получения логов.';
-        }
     }
 
     function copyLink() {
@@ -485,7 +782,6 @@
                 showToast(`Cookies применены! Распознано: ${data.cookies_count}`, 'success');
                 document.getElementById('cookies-text').value = '';
                 toggleCookiesBox();
-                loadLogs();
             } else {
                 showToast(data.detail || 'Ошибка сохранения cookies', 'error');
             }
@@ -582,8 +878,8 @@
         }
     }
 
-    // Load logs on page load & refresh info periodically
-    loadLogs();
+    // Initialize hints on page load & refresh info periodically
+    updateMyTransportHints();
     setInterval(refreshInfo, 10000);
 </script>
 {% endblock %}

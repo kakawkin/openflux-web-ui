@@ -48,10 +48,24 @@ The installer will:
 
 ---
 
+## 🚚 Supported Transports
+
+| Transport | Obfuscation Protocol | Speed | Description |
+|---|---|---|---|
+| **Yandex Telemost** (`telemost`) | WebRTC SFU / Media stream (`StripedTransport`) | **Up to 40+ Mbps** | 🏆 **Recommended.** Highest download speed. Direct WebRTC meeting link via `telemost.yandex.ru`, no disk files required. |
+| **Yandex Docs** (`yandex`) | WebSocket / Live edit | Up to 10–15 Mbps | Classic bypass over public editable text doc or sheet on Yandex Disk. |
+| **Yandex Volga** (`vyandex`) | HTTP Relay + WebSocket | Up to 10 Mbps | Volga transport over Yandex Disk with HTTP polling. |
+| **Mail.ru Docs** (`mailru`) | WebSocket Cloud Office | Up to 10–15 Mbps | Live collaborative editing in Cloud Mail.ru. |
+| **Avito Code** (`avito`) | ShareDB / OT stream | Up to 5–10 Mbps | Collaborative code session on `code.avito.ru`. |
+| **Yandex Boards** (`boards`) | WebSocket | Up to 5–10 Mbps | Public online whiteboard on `boards.yandex.ru`. |
+| **Cups.online** (`cupsonline`) | Centrifugo WebSocket | Up to 5–10 Mbps | Interview rooms on `cups.online`. |
+
+---
+
 ## 🔀 Two Operating Modes: Classic vs Session
 
 * 🟢 **Classic (Cloud Docs Only):**
-  Traffic flows stealthily solely through cloud document WebSockets (Yandex, Mail.ru, etc.) without opening any inbound TCP ports.
+  Traffic flows stealthily solely through cloud document WebSockets or WebRTC without opening any inbound TCP ports.
 * 🔵 **Session (Direct TCP Port / Cookies):**
   Opens a direct TCP port (e.g. `8441`). Enables the client to pass Yandex SmartCaptcha with the server's IP and automatically sync valid cookies back to the node.
 
@@ -60,9 +74,17 @@ The installer will:
 ## 🛡️ User Roles & Personal Portal
 
 * **Admin Portal (`/dashboard`):**
-  Add, rename, delete profiles; monitor active processes, live traffic metrics, VPS RAM, and view real-time system logs. Manage global host/domain and admin credentials.
+  Add, rename, delete profiles across all 7 transports; monitor active processes, live traffic metrics, VPS RAM, and view real-time system logs. Manage global host/domain and admin credentials. Includes an interactive modal guide for configuring transports.
 * **User Portal (`/my`):**
-  Users log in with their assigned username. They can view dynamic QR codes, copy official `openflux://v1/...` links, download `client.conf`, toggle Classic ↔ Session modes, and restart their personal service.
+  Users log in with their assigned credentials. They can:
+  - View dynamic QR codes and copy official `openflux://v1/...` links.
+  - Download preconfigured `client.conf`.
+  - **Change transport protocol & connection URL** directly from their cabinet (old cookies are automatically purged upon transport switch).
+  - Access an **in-cabinet interactive setup guide** for all supported transports.
+  - Toggle Classic ↔ Session modes and restart their personal service.
+  - Set a custom cabinet password.
+* **Zero-CDN Architecture:**
+  Tailwind CSS and Lucide icons are bundled locally in `app/static/`, making the web panel 100% resilient to external CDN blocks or air-gapped environments.
 
 ---
 

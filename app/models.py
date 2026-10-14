@@ -5,7 +5,7 @@ class UserCreate(BaseModel):
     username: str = Field(..., min_length=2, max_length=32, pattern=r"^[a-zA-Z0-9_-]+$")
     password: Optional[str] = None
     doc_url: str = Field(..., min_length=5)
-    transport_type: str = Field(default="yandex") # yandex, vyandex, boards, mailru, cupsonline
+    transport_type: str = Field(default="yandex") # yandex, telemost, vyandex, mailru, boards, avito, cupsonline
     mode: str = Field(default="classic") # classic or session
     encryption_key: Optional[str] = None # 32-char hex secret or auto-generated
     direct_port: Optional[int] = None # 8441..8499
@@ -34,3 +34,7 @@ class ModeUpdate(BaseModel):
 class SettingsUpdate(BaseModel):
     server_host: Optional[str] = None
     admin_password: Optional[str] = None
+
+class MyProfileUpdate(BaseModel):
+    transport_type: Optional[str] = None
+    doc_url: Optional[str] = None
